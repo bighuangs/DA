@@ -1,0 +1,3 @@
+# mixed_selective 策略的可选人工批准别名；single_canonical 不需要附加 Point。
+version: approved-alias-v1
+approved_aliases: []

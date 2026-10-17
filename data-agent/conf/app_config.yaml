@@ -1,0 +1,168 @@
+# 独立部署配置：连接信息和秘密通过环境注入，业务默认值由 AppConfig 补齐。
+logging:
+  file:
+    enable: true
+    level: INFO
+    path: logs
+    rotation: "100 MB"
+    retention: "7 days"
+  console:
+    enable: true
+    level: INFO
+
+db_meta:
+  host: ${oc.env:DB_META_HOST,127.0.0.1}
+  port: ${oc.env:DB_META_PORT,3306}
+  user: ${oc.env:DB_META_USER,da_meta_app}
+  password: ${oc.env:DB_META_PASSWORD}
+  database: ${oc.env:DB_META_DATABASE,da_meta}
+
+db_dw:
+  host: ${oc.env:DB_DW_HOST,127.0.0.1}
+  port: ${oc.env:DB_DW_PORT,3306}
+  user: ${oc.env:DB_DW_USER,da_reader}
+  password: ${oc.env:DB_DW_PASSWORD}
+  database: ${oc.env:DB_DW_DATABASE,da_warehouse}
+
+qdrant:
+  host: ${oc.env:QDRANT_HOST,127.0.0.1}
+  port: ${oc.env:QDRANT_PORT,6333}
+  embedding_size: 1024
+  dense_vector_name: dense
+  sparse_vector_name: sparse
+  trust_env: false
+
+embedding:
+  model: BAAI/bge-m3
+  model_path: ${oc.env:BGE_M3_PATH}
+  revision: ${oc.env:BGE_M3_REVISION,local}
+  dense_size: 1024
+  max_length: 512
+  batch_size: 8
+  device: ${oc.env:BGE_M3_DEVICE,auto}
+  use_fp16: true
+  normalize_dense: true
+  warmup_on_startup: false
+  runtime_mode: ${oc.env:BGE_M3_RUNTIME_MODE,microbatch}
+
+point_projection:
+  strategy: single_canonical
+  alias_manifest_path: conf/point_projection_aliases.yaml
+
+es:
+  host: ${oc.env:ES_HOST,127.0.0.1}
+  port: ${oc.env:ES_PORT,9200}
+  index_name: data-agent-value_index
+  # Elasticsearch 必须安装与其版本匹配的 IK 分析插件。
+  value_analyzer: ik_max_word
+
+redis:
+  host: ${oc.env:REDIS_HOST,127.0.0.1}
+  port: ${oc.env:REDIS_PORT,6379}
+  database: ${oc.env:REDIS_DATABASE,0}
+  password: ${oc.env:REDIS_PASSWORD,null}
+  required_on_startup: false
+
+memory:
+  enabled: true
+  long_term_enabled: true
+  # 摘要与稳定事实功能须在完成专项验证后按需开启。
+  summary_enabled: false
+  summary_build_enabled: false
+  summary_projection_enabled: false
+  stable_fact_enabled: false
+
+llm:
+  model_name: ${oc.env:LLM_MODEL_NAME}
+  provider: ${oc.env:LLM_PROVIDER,openai}
+  api_key: ${oc.env:LLM_API_KEY,""}
+  api_key_env: LLM_API_KEY
+  base_url: ${oc.env:LLM_BASE_URL,null}
+  providers:
+    openai:
+      model_provider: openai
+      api_key_env: LLM_API_KEY
+      access_mode: standard
+    deepseek:
+      model_provider: deepseek
+      api_key_env: LLM_API_KEY
+      access_mode: native
+    dashscope:
+      model_provider: openai
+      api_key_env: LLM_API_KEY
+      access_mode: standard
+  thinking_mode: ${oc.env:LLM_THINKING_MODE,auto}
+  reasoning_effort: ${oc.env:LLM_REASONING_EFFORT,null}
+  temperature: ${oc.env:LLM_TEMPERATURE,0}
+  timeout_seconds: 30
+  max_retries: 1
+  max_completion_tokens: 1024
+  routes:
+    keyword:
+      timeout_seconds: 4
+      max_retries: 0
+      max_completion_tokens: 160
+    selection:
+      timeout_seconds: 6
+      max_retries: 0
+      max_completion_tokens: 384
+    planning:
+      timeout_seconds: 8
+      max_retries: 0
+      max_completion_tokens: 384
+      max_concurrency: 4
+    sql:
+      timeout_seconds: 22
+      max_retries: 1
+      max_completion_tokens: 2048
+      max_concurrency: 6
+    correction:
+      timeout_seconds: 16
+      max_retries: 1
+      max_completion_tokens: 2048
+      max_concurrency: 3
+    candidate:
+      timeout_seconds: 18
+      max_retries: 0
+      max_completion_tokens: 2048
+      max_concurrency: 4
+    postprocess:
+      timeout_seconds: 12
+      max_retries: 0
+      max_completion_tokens: 512
+    recommend:
+      timeout_seconds: 8
+      max_retries: 0
+      max_completion_tokens: 192
+
+chat:
+  history_limit: 5
+
+query_signals:
+  profile: ${oc.env:QUERY_SIGNAL_PROFILE,jieba_tfidf_v1}
+  route_policy: ${oc.env:QUERY_SIGNAL_ROUTE_POLICY,current_multi_query_v1}
+
+planning_route:
+  active_profile: keyword_length_v1
+  # 发布配置不附带本地实验的 shadow 模型系数。
+  shadow_profiles: []
+
+semantic_repair:
+  active_profile: registry_same_rules_v1
+  shadow_profiles: []
+
+query:
+  limit_rows: 1000
+  cost_guard_enabled: true
+  max_explain_rows: 5000000
+  deterministic_sql_direct_emission_enabled: false
+  deterministic_sql_model_fallback_enabled: false
+  sql_semantic_review_enabled: true
+  analysis_enabled_default: false
+
+adhoc: {}
+masking:
+  enabled: true
+auth:
+  enabled: true
+  secret_key: ${oc.env:AUTH_SECRET_KEY}

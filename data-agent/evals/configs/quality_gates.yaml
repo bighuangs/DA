@@ -1,0 +1,53 @@
+version: 1
+
+# 质量门槛是“优化目标”，不是对当前能力的包装。未达到时评测报告必须明确失败，
+# 但本地默认只生成报告；CI 使用 --enforce 才以非零状态阻断。
+thresholds:
+  unit_test_pass_rate: 1.0
+  documentation_missing_links: 0
+  # easy/medium/hard 三档当前合同均为 50 题。
+  golden_min_cases: 50
+  golden_min_categories: 13
+  golden_min_security_cases: 12
+  nl2sql_syntax_valid_rate: 0.99
+  nl2sql_execution_success_rate: 0.98
+  nl2sql_table_accuracy: 0.95
+  # 最终结果正确是主门禁。严格大于 95% / 85% 在 50 题套件上分别等价于
+  # 至少 48 / 43 题；Hard 只记录边界，不设正确率阻断。
+  nl2sql_result_equivalence_rate: 0.85
+  nl2sql_result_equivalence_rate_by_suite:
+    easy_sql_v1: 0.96
+    medium_sql_v1: 0.86
+    hard_sql_v1: 0.0
+  nl2sql_p95_latency_ms: 30000
+  frontend_initial_gzip_kb: 50
+  frontend_e2e_min_cases: 10
+  scenario_matrix_min_cases: 50
+  scenario_matrix_min_per_capability: 5
+  resilience_min_cases: 20
+  resilience_concurrency_error_rate_max: 0.01
+  resilience_cancel_release_ms: 5000
+  rag_recall_min_cases: 16
+  embedding_capacity_gain_min: 1.5
+  query_signal_min_cases: 20
+  adhoc_isolation_min_cases: 21
+  adhoc_isolation_min_per_p0_category: 3
+
+weights:
+  correctness: 0.60
+  safety: 0.15
+  reliability: 0.10
+  efficiency: 0.05
+  experience: 0.05
+  governance: 0.05
+
+correctness_scoring:
+  # 最终结果一致率占正确性域 70%；语法、表选择与其他支持性检查合计 30%。
+  result_equivalence_weight: 0.70
+  supporting_checks_weight: 0.30
+
+profiles:
+  offline:
+    description: 不访问 LLM、MySQL、Qdrant、ES；执行编译、单测、文档、分档评测集契约和前端构建。
+  full:
+    description: 包含 offline，并对指定的 easy/medium/hard 50 题套件运行真实 NL2SQL；需要完整依赖和模型额度。

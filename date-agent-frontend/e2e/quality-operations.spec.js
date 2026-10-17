@@ -1,0 +1,93 @@
+import { expect, test } from "@playwright/test";
+import { openAs } from "./support/mock-api.js";
+
+test("owner can inspect quality trends and privacy-safe trace detail", async ({ page }) => {
+  await openAs(page, "owner");
+  await page.getByRole("button", { name: "质量运营" }).click();
+  await expect(page.getByRole("heading", { name: "质量运营" })).toBeVisible();
+  await expect(page.getByLabel("核心质量指标").getByText("91.7%", { exact: true })).toBeVisible();
+  await expect(page.getByText("已绑定观测", { exact: true })).toBeVisible();
+  await expect(page.getByText("generate_sql", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "候选判优策略门禁" })).toBeVisible();
+  await expect(page.getByText("83.3% → 96.7%", { exact: true })).toBeVisible();
+  await expect(page.getByText("语义合同正反例", { exact: true })).toBeVisible();
+  await expect(page.getByText("3 / 3", { exact: true })).toBeVisible();
+  await expect(page.getByText("误触发 0", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "语义守卫运行态" })).toBeVisible();
+  await expect(page.getByLabel("语义守卫运行态指标").getByText("16.7%", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "运行态语义与调用治理" })).toBeVisible();
+  await expect(page.getByText("排队 / Provider P95", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "查看详情" }).click();
+  await expect(page.getByRole("dialog", { name: "Trace 详情" })).toBeVisible();
+  await expect(page.getByText("SELECT category, SUM(amount) FROM fact_sales GROUP BY category", { exact: true })).toBeVisible();
+  await expect(page.getByText("replace · follow_up_action=replace；变更 指标；继承维度 1 项", { exact: true })).toBeVisible();
+  await expect(page.getByText(/自适应双候选 · 选择 B/)).toBeVisible();
+  await expect(page.getByText("候选 A · 中 0.61", { exact: true })).toBeVisible();
+  await expect(page.getByText("候选 B · 高 0.88", { exact: true })).toBeVisible();
+  const planning = page.getByLabel("规划路由 Trace 证据");
+  await expect(planning.getByText("SQL 规划路由", { exact: true })).toBeVisible();
+  await expect(planning.getByText("keyword_length_v1", { exact: true })).toBeVisible();
+  await expect(planning.getByText("Raw text 关闭", { exact: true })).toBeVisible();
+  await expect(planning.getByText("weighted_scorecard_v1", { exact: true })).toBeVisible();
+  const semanticRepair = page.getByLabel("语义修复 Trace 证据");
+  await expect(semanticRepair.getByText("语义守卫与自动修复", { exact: true })).toBeVisible();
+  await expect(semanticRepair.getByText("P2 同规则注册表", { exact: true })).toBeVisible();
+  await expect(semanticRepair.getByText("Raw SQL 关闭", { exact: true })).toBeVisible();
+  await expect(semanticRepair.getByText(/join\.unique_metadata_edge@1/)).toBeVisible();
+  const semanticCoverage = page.getByLabel("语义槽位覆盖 Trace 证据");
+  await expect(semanticCoverage.getByText("语义槽位覆盖", { exact: true })).toBeVisible();
+  await expect(semanticCoverage.getByText("问题明文 未保存", { exact: true })).toBeVisible();
+  const requestDeadline = page.getByLabel("共享截止时间 Trace 证据");
+  await expect(requestDeadline.getByText("25,100 ms 剩余", { exact: true })).toBeVisible();
+  await expect(requestDeadline.getByText("绝对时间戳 未保存", { exact: true })).toBeVisible();
+  const retrieval = page.getByLabel("检索 Trace 证据");
+  await expect(retrieval.getByText("rule-rerank-v6", { exact: true })).toBeVisible();
+  await expect(retrieval.getByText("Dense 8 Point / 8 实体", { exact: true })).toBeVisible();
+  await expect(retrieval.getByText("Sparse 6 Point / 6 实体", { exact: true })).toBeVisible();
+  await expect(retrieval.getByText("Point single_canonical", { exact: true })).toBeVisible();
+  await expect(retrieval.getByText("角色 canonical", { exact: true })).toBeVisible();
+  const signals = retrieval.getByLabel("字段召回查询信号证据");
+  await expect(signals.getByText("jieba_tfidf_v1", { exact: true })).toBeVisible();
+  await expect(signals.getByText("current_multi_query_v1", { exact: true })).toBeVisible();
+  await expect(signals.getByText("Local / Remote / Rerank 3 / 3 / 3", { exact: true })).toBeVisible();
+  await expect(signals.getByText("远端类型 standalone_query / lexical_terms", { exact: true })).toBeVisible();
+  await expect(signals.getByText("明文 关闭", { exact: true })).toBeVisible();
+  const attempts = page.getByLabel("LLM Attempt 证据");
+  const attempt = attempts.locator(".llm-attempt-row").filter({ hasText: "generate_sql · sql" });
+  await expect(attempts.getByText("物理预算 / 恢复预留", { exact: true })).toBeVisible();
+  await expect(attempts.getByText("排队 / Provider", { exact: true })).toBeVisible();
+  await expect(attempt.getByText(/服务商请求 ID 不可用/)).toBeVisible();
+  await expect(attempt.getByText("服务商 SDK 未提供请求 ID", { exact: true })).toBeVisible();
+});
+
+test("reviewed negative feedback requires draft and second confirmation", async ({ page }) => {
+  const state = await openAs(page, "owner");
+  await page.getByRole("button", { name: "质量运营" }).click();
+  await page.getByLabel("归因分类").selectOption("sql_issue");
+  await page.getByLabel("审核说明").fill("SQL 聚合口径错误");
+  await page.getByRole("button", { name: "完成审核" }).click();
+  await expect(page.getByText("SQL 问题", { exact: true })).toBeVisible();
+  await page.getByLabel("只读 SQL").fill("SELECT region, SUM(amount) FROM fact_sales GROUP BY region");
+  await page.getByRole("button", { name: "保存候选草稿" }).click();
+  await expect(page.getByRole("button", { name: "二次确认" })).toBeVisible();
+  expect(state.candidateStatus).toBe("draft");
+  await page.getByRole("button", { name: "二次确认" }).click();
+  await expect(page.getByText(/停用样例 #19/)).toBeVisible();
+  expect(state.candidateStatus).toBe("confirmed");
+});
+
+test("viewer cannot see the quality operations entry", async ({ page }) => {
+  await openAs(page, "viewer");
+  await expect(page.getByRole("button", { name: "质量运营" })).toHaveCount(0);
+});
+
+test("高 P95 延迟以高风险状态呈现并保留原始节点标识", async ({ page }) => {
+  await openAs(page, "owner", { qualityP95: 58000 });
+  await page.getByRole("button", { name: "质量运营" }).click();
+  const latency = page.getByTestId("metric-latency");
+  await expect(latency).toHaveClass(/bad/);
+  await expect(latency.getByText("850 / 58,000", { exact: true })).toBeVisible();
+  await expect(latency.getByText(/严重（≥30 秒）/)).toBeVisible();
+  await expect(page.getByText("生成 SQL", { exact: true })).toBeVisible();
+  await expect(page.getByText("generate_sql", { exact: true })).toBeVisible();
+});

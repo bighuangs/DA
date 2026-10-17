@@ -1,0 +1,90 @@
+/* Data Agent design foundation */
+:root {
+  color-scheme: light;
+  --da-text: #172033;
+  --da-text-secondary: #58657a;
+  --da-text-muted: #68758a;
+  --da-border: #d9e0ea;
+  --da-border-light: #e8edf3;
+  --da-bg: #ffffff;
+  --da-bg-soft: #f4f7fb;
+  --da-bg-input: #f8faff;
+  --da-surface-raised: rgba(255, 255, 255, 0.94);
+  --da-accent: #2463d4;
+  --da-accent-strong: #174fb8;
+  --da-accent-soft: rgba(52, 120, 246, 0.1);
+  --da-accent-hover: #174fb8;
+  --da-danger: #d64545;
+  --da-success: #1f9d68;
+  --da-warning: #d98b16;
+  --da-shadow-sm: 0 1px 2px rgba(24, 39, 75, 0.04), 0 4px 12px rgba(24, 39, 75, 0.04);
+  --da-shadow-md: 0 8px 28px rgba(31, 55, 96, 0.1);
+  --da-shadow-lg: 0 22px 65px rgba(31, 55, 96, 0.16);
+  --da-radius-sm: 9px;
+  --da-radius-md: 14px;
+  --da-radius-lg: 20px;
+
+  font-family: Inter, "SF Pro Display", "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  color: var(--da-text);
+  background: var(--da-bg-soft);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* { box-sizing: border-box; }
+
+html,
+body,
+#app { height: 100%; margin: 0; }
+
+html { min-width: 320px; }
+
+body {
+  min-width: 320px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(67, 132, 255, 0.08), transparent 28%),
+    var(--da-bg-soft);
+}
+
+button,
+input,
+select,
+textarea { font: inherit; }
+
+button { cursor: pointer; }
+
+button:disabled { cursor: not-allowed; }
+
+button,
+input,
+select,
+textarea { outline: none; }
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid rgba(52, 120, 246, 0.2);
+  outline-offset: 2px;
+}
+
+::selection { color: #fff; background: var(--da-accent); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(88, 101, 122, 0.22); border: 2px solid transparent; border-radius: 999px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(88, 101, 122, 0.36); background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

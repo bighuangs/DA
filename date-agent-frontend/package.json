@@ -1,0 +1,27 @@
+{
+  "name": "date-agent-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:e2e": "npm run test:e2e:mock && npm run test:e2e:real",
+    "test:e2e:mock": "node scripts/run-playwright-mock.mjs",
+    "test:e2e:real": "node scripts/run-playwright-real.mjs",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report"
+  },
+  "dependencies": {
+    "@lucide/vue": "^1.27.0",
+    "echarts": "^6.1.0",
+    "vue": "^3.5.24"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.61.1",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "vite": "^7.2.4"
+  }
+}

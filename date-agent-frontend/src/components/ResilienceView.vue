@@ -1,0 +1,57 @@
+<template>
+  <section class="resilience-page">
+    <header class="page-head">
+      <div><span class="eyebrow">EVALUATION / RESILIENCE</span><h1>依赖故障、并发与资源边界</h1><p>以可控故障注入验证降级、限流、取消释放、缓存合并和硬资源边界。</p></div>
+      <div class="actions"><button class="btn" type="button" @click="load">刷新</button><button class="btn primary" type="button" @click="copyCommand">复制执行命令</button></div>
+    </header>
+    <p v-if="error" class="alert" role="alert">{{ error }}</p><p v-if="notice" class="notice" role="status">{{ notice }}</p>
+    <div v-if="loading" class="loading">正在读取稳定性报告…</div>
+    <template v-else-if="report">
+      <section class="summary" aria-label="稳定性评测摘要">
+        <article><span>探针总数</span><strong>{{ report.summary.total }}</strong><small>{{ report.contract.fingerprint ? shortHash(report.contract.fingerprint) : "无指纹" }}</small></article>
+        <article class="good"><span>通过</span><strong>{{ report.summary.passed }}</strong><small>{{ percent(report.summary.pass_rate) }}</small></article>
+        <article :class="report.summary.failed ? 'bad' : 'good'"><span>失败</span><strong>{{ report.summary.failed }}</strong><small>{{ report.summary.gate_passed ? "确定性门禁通过" : "门禁未通过" }}</small></article>
+        <article class="cert"><span>进程内循环认证</span><strong>{{ certificationLabel(report.certification.status) }}</strong><small>{{ report.certification.duration_seconds }} / {{ report.certification.required_seconds }} 秒 · 不含真实依赖</small></article>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h2>能力覆盖</h2><p>确定性探针与进程内长循环只验证资源语义；生产等价长稳尚需真实 HTTP、依赖和资源采样。</p></div><span :class="report.summary.gate_passed ? 'pass' : 'fail'">{{ report.summary.gate_passed ? "门禁通过" : "门禁失败" }}</span></div>
+        <div class="category-grid"><article v-for="item in report.categories" :key="item.category"><div><strong>{{ categoryLabel(item.category) }}</strong><b>{{ item.passed }}/{{ item.total }}</b></div><div class="bar"><i :style="{ width: `${item.total ? item.passed / item.total * 100 : 0}%` }"></i></div><small>{{ categoryDescription(item.category) }}</small></article></div>
+      </section>
+      <section class="panel limits-panel">
+        <div class="panel-head"><div><h2>当前资源边界</h2><p>页面展示的是运行配置，不是前端写死的说明。</p></div></div>
+        <dl class="limits"><div v-for="(value, key) in report.resource_limits" :key="key"><dt>{{ limitLabel(key) }}</dt><dd>{{ formatNumber(value) }}</dd></div></dl>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><div><h2>探针明细</h2><p>展开可查看注入结果、P95、错误率和释放状态。</p></div><b>{{ filteredCases.length }} / {{ report.cases.length }}</b></div>
+        <form class="filters" aria-label="稳定性探针筛选" @submit.prevent><label>类别<select v-model="filters.category"><option value="">全部类别</option><option v-for="item in report.categories" :key="item.category" :value="item.category">{{ categoryLabel(item.category) }}</option></select></label><label>风险<select v-model="filters.risk"><option value="">全部风险</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option></select></label><label>状态<select v-model="filters.status"><option value="">全部状态</option><option value="passed">通过</option><option value="failed">失败</option></select></label></form>
+        <div class="case-list"><details v-for="item in filteredCases" :key="item.id" class="case"><summary><i :class="item.status"></i><code>{{ item.id }}</code><strong>{{ item.title }}</strong><span>{{ categoryLabel(item.category) }}</span><em :class="item.risk">{{ item.risk }}</em><small>{{ item.duration_ms }} ms</small></summary><div class="case-body"><div><b>探针</b><code>{{ item.probe }}</code></div><div><b>观测结果</b><pre>{{ pretty(item.metrics) }}</pre></div><p v-if="item.error" class="case-error">{{ item.error }}</p></div></details><p v-if="!filteredCases.length" class="empty">当前筛选没有探针。</p></div>
+      </section>
+      <section class="command"><div><strong>重新执行确定性评测</strong><small>追加 --soak-seconds 1800 仅执行进程内循环认证，不代表生产容量。</small></div><code>{{ command }}</code></section>
+    </template>
+  </section>
+</template>
+
+<script setup>
+import { computed, onMounted, reactive, ref } from "vue";
+import { requestJson } from "../utils/http.js";
+const command = "python -m app.eval.resilience_suite --enforce";
+const report = ref(null), loading = ref(false), error = ref(""), notice = ref("");
+const filters = reactive({ category: "", risk: "", status: "" });
+const filteredCases = computed(() => (report.value?.cases || []).filter(item => (!filters.category || item.category === filters.category) && (!filters.risk || item.risk === filters.risk) && (!filters.status || item.status === filters.status)));
+async function load(){loading.value=true;error.value="";try{report.value=await requestJson("/api/admin/evaluation/resilience/latest",{},"稳定性报告加载失败");}catch(e){error.value=e.message||"稳定性报告加载失败";}finally{loading.value=false;}}
+async function copyCommand(){try{await navigator.clipboard.writeText(command);notice.value="执行命令已复制";setTimeout(()=>notice.value="",2000);}catch{error.value="剪贴板不可用，请手动复制页面底部命令。";}}
+function percent(value){return `${(Number(value||0)*100).toFixed(1)}%`;}
+function shortHash(value){return `${value.slice(0,14)}…${value.slice(-6)}`;}
+function pretty(value){return JSON.stringify(value||{},null,2);}
+function formatNumber(value){return Number(value).toLocaleString("zh-CN");}
+function certificationLabel(value){return ({in_process_soak_certified:"进程内已认证",in_process_smoke_only:"进程内短测",certified:"旧版进程内认证",smoke_only:"旧版短测",not_run:"未运行",failed:"失败"})[value]||value;}
+function categoryLabel(value){return ({dependency:"依赖故障",concurrency:"并发",cancellation:"取消释放",resource:"资源边界",cache:"缓存",soak:"循环稳定性"})[value]||value;}
+function categoryDescription(value){return ({dependency:"可选依赖降级、关键依赖明确失败",concurrency:"1/5/20 并发、隔离与饱和",cancellation:"SSE 取消释放和异常传播",resource:"输入、结果、上传与导出上限",cache:"SingleFlight、TTL 与 LRU",soak:"重复创建和释放后的边界回归"})[value]||"";}
+function limitLabel(value){return ({query_chars:"问题字符",result_rows:"查询结果行",upload_bytes:"上传字节",upload_rows:"上传行",export_cells:"导出单元格",global_concurrency:"实例并发",workspace_concurrency:"空间并发"})[value]||value;}
+onMounted(load);
+</script>
+
+<style scoped>
+.resilience-page{flex:1 1 auto;min-height:0;overflow:auto;padding:36px 34px 70px;color:var(--da-text)}.page-head,.summary,.panel,.alert,.notice,.command{max-width:1320px;margin-left:auto;margin-right:auto}.page-head{display:flex;justify-content:space-between;gap:24px;margin-bottom:22px}.eyebrow{color:var(--da-accent);font-size:10px;font-weight:750;letter-spacing:.17em}.page-head h1{margin:7px 0 0;font-size:29px;letter-spacing:-.04em}.page-head p,.panel-head p{margin:7px 0 0;color:var(--da-text-muted);font-size:13px}.actions{display:flex;gap:8px;align-items:start}.btn{min-height:38px;padding:8px 13px;border:1px solid var(--da-border);border-radius:9px;background:#fff;color:var(--da-text-secondary);font:12px inherit}.btn.primary{border-color:var(--da-accent);background:var(--da-accent);color:#fff}.alert,.notice{margin-bottom:13px;padding:11px 14px;border-radius:10px;font-size:12px}.alert{border:1px solid #f0c5bf;background:#fff3f1;color:#bd3b2c}.notice{border:1px solid #b9e2c8;background:#f0fbf4;color:#287b4a}.loading{min-height:360px;display:grid;place-items:center;color:var(--da-text-muted)}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:17px}.summary article{position:relative;overflow:hidden;padding:17px;border:1px solid var(--da-border-light);border-radius:14px;background:#fff;box-shadow:var(--da-shadow-sm)}.summary article:before{position:absolute;inset:0 auto 0 0;width:3px;background:#7d8da4;content:""}.summary .good:before{background:#35a56a}.summary .bad:before{background:#dc6656}.summary .cert:before{background:#e0a33a}.summary span,.summary small{display:block;color:var(--da-text-muted);font-size:10px}.summary strong{display:block;margin:7px 0 4px;font-size:21px}.panel{margin-bottom:17px;padding:21px;border:1px solid var(--da-border-light);border-radius:16px;background:rgba(255,255,255,.94);box-shadow:var(--da-shadow-sm)}.panel-head{display:flex;justify-content:space-between;gap:15px;margin-bottom:15px}.panel-head h2{margin:0;font-size:16px}.panel-head>span{align-self:start;padding:5px 9px;border-radius:99px;font-size:10px}.panel-head .pass{background:#e9f8ef;color:#257949}.panel-head .fail{background:#fff0ee;color:#b63e31}.category-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.category-grid article{padding:13px;border:1px solid var(--da-border-light);border-radius:11px;background:#fbfcfe}.category-grid article>div:first-child{display:flex;justify-content:space-between;font-size:11px}.category-grid small{color:var(--da-text-muted);font-size:9px}.bar{height:6px;margin:9px 0 6px;overflow:hidden;border-radius:99px;background:#e9edf3}.bar i{display:block;height:100%;background:linear-gradient(90deg,#2d75e8,#60a0ff)}.limits{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin:0}.limits div{padding:11px;border-radius:9px;background:var(--da-bg-soft)}.limits dt{color:var(--da-text-muted);font-size:9px}.limits dd{margin:5px 0 0;font-weight:700;font-size:13px}.filters{display:flex;gap:8px;margin-bottom:13px}.filters label{display:grid;gap:4px;color:var(--da-text-muted);font-size:9px}.filters select{min-height:35px;padding:7px 9px;border:1px solid var(--da-border);border-radius:8px;background:#fff}.case-list{display:grid;gap:7px}.case{border:1px solid var(--da-border-light);border-radius:10px;background:#fff}.case summary{display:flex;align-items:center;gap:9px;padding:12px;cursor:pointer;list-style:none}.case summary::-webkit-details-marker{display:none}.case summary>i{width:8px;height:8px;border-radius:50%;background:#dc6656}.case summary>i.passed{background:#35a56a}.case summary>strong{min-width:0;flex:1;font-size:12px}.case summary>span,.case summary>em{padding:4px 7px;border-radius:99px;background:var(--da-bg-soft);color:var(--da-text-muted);font-size:9px;font-style:normal}.case summary>em.critical{background:#fff0ee;color:#b33f32}.case summary>small{color:var(--da-text-muted)}code,pre{font-family:Consolas,monospace}.case summary code{font-size:10px}.case-body{display:grid;grid-template-columns:180px 1fr;gap:9px;padding:13px;border-top:1px solid var(--da-border-light)}.case-body>div{padding:10px;border-radius:8px;background:var(--da-bg-soft)}.case-body b,.case-body code{display:block;font-size:10px}.case-body pre{overflow:auto;max-height:180px;margin:7px 0 0;font-size:10px}.case-error{color:#b33f32}.empty{text-align:center;color:var(--da-text-muted)}.command{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:18px;padding:15px 17px;border:1px solid #cfe0f4;border-radius:13px;background:#f4f8fd}.command strong,.command small{display:block}.command small{margin-top:4px;color:var(--da-text-muted);font-size:10px}.command code{overflow:auto;padding:9px 11px;border-radius:8px;background:#202634;color:#e8edf5;white-space:nowrap}
+@media(max-width:1000px){.page-head{display:block}.actions{margin-top:13px}.summary,.category-grid{grid-template-columns:1fr 1fr}.limits{grid-template-columns:repeat(4,1fr)}}@media(max-width:700px){.resilience-page{padding:25px 14px 50px}.summary,.category-grid,.limits{grid-template-columns:1fr 1fr}.case summary>span,.case summary>em{display:none}.case-body,.command{grid-template-columns:1fr}.page-head h1{font-size:25px}}
+</style>
