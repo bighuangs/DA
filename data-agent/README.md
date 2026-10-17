@@ -1,6 +1,6 @@
-# Data Agent 后端
+# 京析·数语 · 后端
 
-基于 Python 3.12+、FastAPI 和 LangGraph 的智能问数后端。完整环境、初始化和安全说明见[项目 README](../README.md)。
+个人电商经营智能问数与分析平台“京析·数语”的后端，基于 Python 3.12+、FastAPI 和 LangGraph，为销售统计、商品排行、区域对比与客户消费分析提供 Text-to-SQL、业务知识检索、会话记忆和结果分析能力。代码包沿用 `data-agent` 命名。完整项目介绍、个人职责、成果、环境、初始化和安全说明见[项目 README](../README.md)。
 
 ## 目录职责
 
